@@ -170,16 +170,20 @@
                 {
                     "name": "adaptiveAcceleration",
                     "options": {
-                        "enableBrotliCompression": false,
-                        "enablePreconnect": true,
-                        "enablePush": true,
-                        "enableRo": false,
-                        "preloadEnable": true,
                         "source": "mPulse",
+                        "enablePush": true,
+                        "enablePreconnect": true,
+                        "preloadEnable": true,
+                        "abLogic": "DISABLED",
+                        "enableRo": true,
+                        "enableBrotliCompression": false,
                         "titleHttp2ServerPush": "",
                         "titlePreconnect": "",
                         "titlePreload": "",
-                        "titleRo": ""
+                        "abTesting": "",
+                        "compression": "",
+                        "titleRo": "",
+                        "titleBrotli": ""
                     }
                 }
             ],
