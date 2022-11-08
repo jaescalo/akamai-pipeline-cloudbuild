@@ -4,6 +4,7 @@ env:
   variables:
     ENVIRONMENT: gitops-dev
     PIPELINE_NAME: demo.com
+    ONBOARD: true
   parameter-store:
     ACCOUNT_KEY: "ACCOUNT_KEY"
     CLIENT_SECRET: "CLIENT_SECRET"
@@ -17,6 +18,10 @@ phases:
       - echo -e "[papi]\nclient_secret = $CLIENT_SECRET\nhost = $HOST\naccess_token = $ACCESS_TOKEN\nclient_token = $CLIENT_TOKEN" > edgerc.config
   build:
     commands:
+      - |
+      if [ "$ONBOARD" ]; then
+        echo "ATTEMPTING NEW BUILD"
+      fi 
       - akamai pipeline merge -n -v -p $PIPELINE_NAME $ENVIRONMENT
       - akamai property-manager property-update -p $ENVIRONMENT.$PIPELINE_NAME --file $PIPELINE_NAME/dist/$ENVIRONMENT.$PIPELINE_NAME.papi.json --message "Created By CodeBuild-$CODEBUILD_RESOLVED_SOURCE_VERSION" --accountSwitchKey $ACCOUNT_KEY
       - akamai property-manager activate-version -p $ENVIRONMENT.$PIPELINE_NAME --network staging --wait-for-activate --accountSwitchKey $ACCOUNT_KEY
