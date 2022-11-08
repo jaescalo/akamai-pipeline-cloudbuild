@@ -20,7 +20,7 @@ phases:
     commands:
       - |
       if [ "$ONBOARD" ]; then
-        echo "ATTEMPTING NEW BUILD"
+        echo "ATTEMPTING NEW BUILD";
       fi 
       - akamai pipeline merge -n -v -p $PIPELINE_NAME $ENVIRONMENT
       - akamai property-manager property-update -p $ENVIRONMENT.$PIPELINE_NAME --file $PIPELINE_NAME/dist/$ENVIRONMENT.$PIPELINE_NAME.papi.json --message "Created By CodeBuild-$CODEBUILD_RESOLVED_SOURCE_VERSION" --accountSwitchKey $ACCOUNT_KEY
