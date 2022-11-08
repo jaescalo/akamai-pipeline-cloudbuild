@@ -2,7 +2,7 @@
     "environments": [
         "gitops-dev",
         "gitops-prod",
-        "gitops-new"
+        "gitops-new2"
     ],
     "name": "demo.com"
 }
