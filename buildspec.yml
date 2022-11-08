@@ -18,11 +18,7 @@ phases:
       - echo -e "[papi]\nclient_secret = $CLIENT_SECRET\nhost = $HOST\naccess_token = $ACCESS_TOKEN\nclient_token = $CLIENT_TOKEN" > edgerc.config
   build:
     commands:
-      - |
-      if [ 1 = 1 ]; then
-        akamai property-manager new-property -e gitops-dev.demo.com -p $ENVIRONMENT.$PIPELINE_NAME --nolocaldir --accountSwitchKey $ACCOUNT_KEY
-        akamai property-mananger hostname-update -p $ENVIRONMENT.$PIPELINE_NAME --propver 1 --file $PIPELINE_NAME/environments/$ENVIRONMENT/hostnames.json --accountSwitchKey $ACCOUNT_KEY
-      fi;
+      - if [ 1 eq 1 ]; then akamai property-manager new-property -e gitops-dev.demo.com -p $ENVIRONMENT.$PIPELINE_NAME --nolocaldir --accountSwitchKey $ACCOUNT_KEY && akamai property-mananger hostname-update -p $ENVIRONMENT.$PIPELINE_NAME --propver 1 --file $PIPELINE_NAME/environments/$ENVIRONMENT/hostnames.json --accountSwitchKey $ACCOUNT_KEY; fi
       - akamai pipeline merge -n -v -p $PIPELINE_NAME $ENVIRONMENT
       - akamai property-manager property-update -p $ENVIRONMENT.$PIPELINE_NAME --file $PIPELINE_NAME/dist/$ENVIRONMENT.$PIPELINE_NAME.papi.json --message "Created By CodeBuild-$CODEBUILD_RESOLVED_SOURCE_VERSION" --accountSwitchKey $ACCOUNT_KEY
       - akamai property-manager activate-version -p $ENVIRONMENT.$PIPELINE_NAME --network staging --wait-for-activate --accountSwitchKey $ACCOUNT_KEY
