@@ -4,7 +4,7 @@ env:
   variables:
     ENVIRONMENT: gitops-new
     PIPELINE_NAME: demo.com
-    ONBOARD: true
+    ONBOARD: false
   parameter-store:
     ACCOUNT_KEY: "ACCOUNT_KEY"
     CLIENT_SECRET: "CLIENT_SECRET"
