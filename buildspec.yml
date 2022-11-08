@@ -2,7 +2,7 @@ version: 0.2
 
 env:
   variables:
-    ENVIRONMENT: gitops-dev
+    ENVIRONMENT: gitops-new
     PIPELINE_NAME: demo.com
     ONBOARD: true
   parameter-store:
@@ -19,8 +19,9 @@ phases:
   build:
     commands:
       - |
-      if [ $ONBOARD == true ]; then
-        akamai;
+      if [ 1 = 1 ]; then
+        akamai property-manager new-property -e gitops-dev.demo.com -p $ENVIRONMENT.$PIPELINE_NAME --nolocaldir --accountSwitchKey $ACCOUNT_KEY
+        akamai property-mananger hostname-update -p $ENVIRONMENT.$PIPELINE_NAME --propver 1 --file $PIPELINE_NAME/environments/$ENVIRONMENT/hostnames.json --accountSwitchKey $ACCOUNT_KEY
       fi;
       - akamai pipeline merge -n -v -p $PIPELINE_NAME $ENVIRONMENT
       - akamai property-manager property-update -p $ENVIRONMENT.$PIPELINE_NAME --file $PIPELINE_NAME/dist/$ENVIRONMENT.$PIPELINE_NAME.papi.json --message "Created By CodeBuild-$CODEBUILD_RESOLVED_SOURCE_VERSION" --accountSwitchKey $ACCOUNT_KEY
