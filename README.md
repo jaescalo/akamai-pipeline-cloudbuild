@@ -1,8 +1,8 @@
 ![](https://codebuild.us-east-2.amazonaws.com/badges?uuid=eyJlbmNyeXB0ZWREYXRhIjoidFd4Zk1yMWRhMS9yTEtLeVJDeVRuUlJvK1NRODN2TGY1eE0yVW9ZaStOeHhkQ3laWnpkbFVWWmVWL0RLaE1xaHIvUFBGVktlMWFXT1lPNkN2akJKbldvPSIsIml2UGFyYW1ldGVyU3BlYyI6IkEwRHBidVBkS3U2ZEVsVTMiLCJtYXRlcmlhbFNldFNlcmlhbCI6MX0%3D&branch=main)
 
-# Akamai Property Manager Demo Pipeline in AWS CodeBuild
+# Akamai Property Manager Pipeline with Onboarding Option in AWS CodeBuild
 
-This is a demo on how to manage existing Akamai properties as code by leveraging "Akamai Pipeline" CLI framework which allows to:
+This is a demo on how to onboard and manage Akamai properties as code by leveraging "Akamai Pipeline" CLI framework which allows to:
 
 * Break an existing property into JSON snippets
 * Parameterize the builds for the different environments by using the variables JSON files.
@@ -10,13 +10,15 @@ This is a demo on how to manage existing Akamai properties as code by leveraging
 
 After the rule tree is built it will be pushed to Akamai and activated using the Akamai Property CLI commands (more flexibility for CI/CD) instead of the Akamai CLI pipeline promote commands.
 
+If the `ONBOARD=true` option is specified then a new property is created beforehand.
+
 ## Prerequisites
 - [Akamai API Credentials](https://techdocs.akamai.com/developer/docs/set-up-authentication-credentials) for Cloudlets and Test Center. Also familiarize with concepts related to the .edgerc (location, section, account-key). These will be used in the pipeline code but removed from this writing for simplification.
 - [Akamai Property Manager CLI](https://github.com/akamai/cli-property-manager)
 - Go through the [Akamai Pipeline Runbook](https://developer.akamai.com/resource/whitepaper/akamai-pipeline-cli-framework-runbook/direct)
 - [Akamai Account Switch Key](https://techdocs.akamai.com/developer/docs/manage-many-accounts-with-one-api-client). Only in case you manage multiple accounts with the same set of credentials.
 
-## Prepare Properties for Akamai as Code
+## Prepare Existing Properties for Akamai as Code
 Perhaps the most important step is to prepare the target properties for management via the pipeline framework.
 
 * Pipeline should be based on a production property (i.e. www.example.com NOT qa.example.com)
@@ -26,10 +28,27 @@ Perhaps the most important step is to prepare the target properties for manageme
 * Freeze the rule tree to a specific version to avoid future catalog updates that could turn the current Akamai as Code incompatible.
 * Avoid code drift by changes made outside the Akamai as Code flow and develop new processes to make sure your code is fully up to date and the single source of truth
 
+## Setup for New Properties
+For deploying new properties and hostnames a basic property can be created with the Property Manager CLI and afterwards updated by the "Akamai Pipeline" CLI framework.
+
+```
+$ akamai property-manager new-property 
+```
+
+Every property must have a Content Provider Code and an Edge Hostname. In this demo these resources already exist, but in a fully automated pipeline for onboarding properties the creation of these resources can be automated.
+
+```
+$ akamai property-manager create-cpcode 
+```
+```
+$ akamai property-manager hostname-update 
+```
+Additional scripting may be required to actually create an Edge Hostname and point it to an existing certificiate enrollment by using this [API](https://techdocs.akamai.com/property-mgr/reference/post-edgehostnames).
+
 ### Akamai Pipeline Setup
 The main idea is to build a template property that will be used for all the environments. Once a property is ready for "Akamai as Code" it can be used as a template. It is a good idea to make your production property the template property.
 
-These steps should only need to be executed once when you're converting a property to code or when you're adding new environments to the pipeline.
+These steps should only need to be executed once when you're converting a property to code or when you're adding new environments or new onboarding to the pipeline.
 
 1. Create your Akamai API credentials and install the Akamai Property Manager CLI.
 2. Create a local pipeline referring to the template property. You can give any name to the pipeline and at this point is not necessary to specify all the environments, these can be added later. This command will actually create new properties, but these can be deleted later.
@@ -62,7 +81,7 @@ These steps should only need to be executed once when you're converting a proper
 Our file repository is set up! These can be uploaded to GitLab now and managed with CI/CD.
 
 ## CodeBuild Setup
-For this demo, temporary Akamai API Credentials credentials are stored in **GCP Secrets Manager**. The naming convention for the variables used is:
+For this demo, temporary Akamai API Credentials credentials are stored in **AWS Parameter Store**. The naming convention for the variables used is:
 
 - CLIENT_SECRET = client_secret
 - HOST = host
@@ -80,23 +99,33 @@ Finally, for this particular integration **GitHub** is used as the version contr
 ## Akamai CI/CD Setup in GCP CodeBuild
 This is a simple example that leverages the akamai/shell Docker container to build the .edgerc file in one job and execute the pipeline cli in another job. Check the `buildspec.yml` for more clarification on the following steps.
 
-1. Store The Akamai {OPEN} API credentials in the project variables in GitLab to keep them masked.
-2. A developer makes changes to JSON code and commits is to the repository. Git branching and collaboration concepts apply here.
-4. Akamai CLI builds the rule file from the json snippets and variables
+1. Store The Akamai {OPEN} API credentials in AWS Parameter Store.
+2. A developer makes changes to JSON code and commits is to the repository. The changes could be updating an existing property or adding a new environment to the Akamai Pipeline which will result in a new property. Git access conntrol, branching and collaboration concepts apply here. When creating a new property the new environment must be added to the "Akamai Pipeline" structure. That is:
+    * Add a new folder under the `/environments/` folder with the name of the new environment
+    * Add all the required files in the `/environments/` folder with the parameters for the new environment/property
+    * In the `projectInfo.json` add the new environment name under `"environments"`
+3. For a new onboarding observe there is a boolean variable `ONBOARD`. If set to `true` the commands in items 4 and 5 below apply.
+4. Create a new property based on another property. This simplifies the creation process as the new property will use the same group and contract IDs.
+    ```
+    $ akamai property-manager new-property -e <source_property> -p dev.demo.com --nolocaldir 
+    ```
+    Where dev.demo.com is the new property name
+5. Update the property with the new hostnames which must be specified in the `hostnames.json` from step 2 above.
+    ```
+    $ akamai property-manager hostname-update -p dev.demo.com --propver 1 --file demo.com/environments/dev/hostnames.json
+    ```
+6. Akamai CLI builds the rule file from the json snippets and variables
     ```
     $ akamai pipeline merge  -n -v -p demo.com dev
     ```
-5. Akamai CLI creates a new version of the property and updates it with the local rule tree file. For example:
+7. Akamai CLI creates a new version of the property and updates it with the local rule tree file. For example:
     ```
     $ akamai property-manager property-update -p dev.demo.com --file demo.com/dist/dev.demo.com.papi.json --message "Created By CodeBuild-$PROJECT_ID-$BUILD_ID; Commit $COMMIT_SHA"
     ```
-6. Akamai CLI activates the property. For example:
+8. Akamai CLI activates the property. For example:
     ```
     akamai property-manager activate-version -p dev.demo.com --network staging --wait-for-activate
     ```
-
-## Test Stage
-This is optional but highly recommended to always test the changes through any testing framentworks. In this example Newman (CLI for Postman) is used to run a public collection from a URL.
 
 ## Resources
 - [Akamai OPEN Edgegrid API Clients](https://techdocs.akamai.com/developer/docs/authenticate-with-edgegrid)
